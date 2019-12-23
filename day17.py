@@ -43,7 +43,7 @@ class Computer:
     def is_halt(self):
         return self.prog[self.ip] == 99
 
-    def run_step(self, inp):
+    def run_step(self, inp=None):
         while self.prog[self.ip] != 99:
             opcode, mode1, mode2, mode3 = self.parse_instruction(self.prog[self.ip])
             
@@ -59,7 +59,7 @@ class Computer:
             
             elif opcode == 3:
                 op1 = self.prog[self.ip+1]
-                self.prog[self.read_write_address(op1, mode1)] = inp
+                self.prog[self.read_write_address(op1, mode1)] = inp.pop(0)
 
                 self.ip += 2
 
@@ -103,72 +103,80 @@ class Computer:
                 self.base += op1
                 self.ip += 2
 
-def bfs1(queue, grid):
-    d = {1: (0,1), 2: (0,-1), 3: (-1,0), 4: (1,0)}
-    while len(queue) > 0:
-        x, y, computer, dist = queue.pop(0)
-        grid[(x,y)] = '.'
-        print(x,y)
-
-        for i in [1,2,3,4]:
-            newx = x + d[i][0]
-            newy = y + d[i][1]
-            if (newx, newy) in grid:
-                continue
-            c = deepcopy(computer)
-            output = c.run_step(i)
-            if output == 0:
-                grid[(newx, newy)] = '#'
-            elif output == 1:
-                queue.append((newx, newy, c, dist+1))
-            elif output == 2:
-                grid[(newx, newy)] = 'O'
-                ox_x = newx
-                ox_y = newy
-                dist_to_oxygen = dist + 1
-    
-    return dist_to_oxygen, ox_x, ox_y
-
-def bfs2(queue, grid):
-    d = {1: (0,1), 2: (0,-1), 3: (-1,0), 4: (1,0)}
-    max_dist = 0
-    while len(queue) > 0:
-        x, y, dist = queue.pop(0)
-        max_dist = max(max_dist, dist)
-        grid[(x,y)] = 'O'
-
-        for i in [1,2,3,4]:
-            newx = x + d[i][0]
-            newy = y + d[i][1]
-            if (newx, newy) not in grid:
-                continue
-            if grid[(newx, newy)] == '#' or grid[(newx, newy)] == 'O':
-                continue
+def get_intersections(view):
+    num_rows = len(view)
+    num_columns = len(view[0])
+    d = [(0,1), (1,0), (0,-1), (-1,0)]
+    intersections = []
+    for i in range(1, num_rows-1):
+        for j in range(1, num_columns-1):
+            intersection = True
+            if view[i][j] == '#':
+                for m in d:
+                    if view[i+m[0]][j+m[1]] != '#':
+                        intersection = False
             else:
-                queue.append((newx, newy, dist+1))
-    
-    return max_dist
-
-def print_grid(grid):
-    maze = [[' ' for i in range(50)] for j in range(50)]
-    for x, y in grid.keys():
-        maze[y+25][x+25] = grid[(x,y)]
-    for i in range(50):
-        print(''.join(maze[i]))
+                intersection = False
+            if intersection:
+                intersections.append((i,j))
+    return intersections
 
 if __name__ == '__main__':
 
-    with open('day15.txt') as f:
-        prog_input = [int(x) for x in f.read().split(',')] + [0 for i in range(100000)]
-    
+    with open('day17.txt') as f:
+        prog_input = [int(x) for x in f.read().split(',')] + [0 for i in range(10000)]
+
+    # Part 1
+    computer = Computer(prog_input.copy())
+    view = []
+    line = ''
+    while not computer.is_halt():
+        output = computer.run_step()
+        if output is None:
+            break
+        if output == 10:
+            if line != '':
+                view.append(line)
+                line = ''
+        else:
+            line += chr(output)
+        
+    print(sum([x[0]*x[1] for x in get_intersections(view)]))
+    for line in view:
+        print(line, len(line))
+
+    # Part 2
+    A = 65
+    B = 66
+    C = 67
+    COMMA = 44
+    NEWLINE = 10
+    L = 76
+    R = 82
+    main_routine = [65, 44, 66, 44, 67, 44, 66, 44, 65, 44, 67, 10]
+    func_A = [L, COMMA, ord('4'), COMMA, L, COMMA, ord('8'), NEWLINE]
+    func_B = [82, 44, 52, 44, 82, 44, 52, 44, 82, 44, 56, 10]
+    func_C = [76, 44, 54, 44, 76, 44, 50, 10]
+    inputs = main_routine + func_A + func_B + func_C + [ord('y'), NEWLINE]
+
+    prog_input[0] = 2
     computer = Computer(prog_input)
-    grid = dict()
-    dist, ox_x, ox_y = bfs1([(0, 0, computer, 0)], grid)
-    print('Distance:', dist)
 
-    print_grid(grid)
+    while inputs:
+        a = computer.run_step(inputs)
+        #print(a, inputs)
 
-    dist = bfs2([(ox_x, ox_y, 0)], grid)
-    print('Distance:', dist)
-
-    print_grid(grid)
+    view = []
+    line = ''
+    while not computer.is_halt():
+        output = computer.run_step()
+        if output is None:
+            for line in view:
+                print(line, len(line))
+            break
+        if output == 10:
+            if line != '':
+                view.append(line)
+                line = ''
+        else:
+            line += chr(output)
